@@ -8,7 +8,8 @@ namespace non_public_U
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	CONSOLE_CURSOR_INFO cci;
 	INPUT input = { 0 };
-	time_t now;
+	struct tm timeInfo;
+	POINT lastMousePos;
 }
 
 inline void BUtils::sleepMilliS(long milliseconds)
@@ -33,45 +34,38 @@ inline void BUtils::sleepHour(long hours)
 
 int BUtils::getCurrentYear()
 {
-	non_public_U::now = time(0);
-	return 1900 + localtime(&non_public_U::now)->tm_year;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return 1900 + non_public_U::timeInfo.tm_year;
 }
 
 int BUtils::getCurrentMonth()
 {
-
-	non_public_U::now = time(0);
-	return 1 + localtime(&non_public_U::now)->tm_mon;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return 1 + non_public_U::timeInfo.tm_mon;
 }
 
 int BUtils::getCurrentDay()
 {
-	non_public_U::now = time(0);
-	return localtime(&non_public_U::now)->tm_mday;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return non_public_U::timeInfo.tm_mday;
 }
 
 int BUtils::getCurrentHour()
 {
-	non_public_U::now = time(0);
-	if (localtime(&non_public_U::now)->tm_isdst == 0)
-		return 1 + localtime(&non_public_U::now)->tm_hour;
-	else
-		if (localtime(&non_public_U::now)->tm_hour == 0)
-			return 24;
-		else
-			return localtime(&non_public_U::now)->tm_hour;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return (non_public_U::timeInfo.tm_hour == 0) ? 24 : non_public_U::timeInfo.tm_hour;
 }
 
 int BUtils::getCurrentMinute()
 {
-	non_public_U::now = time(0);
-	return 1 + localtime(&non_public_U::now)->tm_min;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return non_public_U::timeInfo.tm_min;
 }
 
 int BUtils::getCurrentSecond()
 {
-	non_public_U::now = time(0);
-	return 1 + localtime(&non_public_U::now)->tm_sec;
+	localtime_s(&non_public_U::timeInfo, new time_t(time(0)));
+	return non_public_U::timeInfo.tm_sec;
 }
 
 void BUtils::setMousePosition(COORD pos)
@@ -94,9 +88,8 @@ inline void BUtils::setMousePosition(int x, int y)
 
 POINT BUtils::getMousePosition()
 {
-	POINT mousePos;
-	GetCursorPos(&mousePos);
-	return{ mousePos.x,mousePos.y };
+	GetCursorPos(&non_public_U::lastMousePos);
+	return non_public_U::lastMousePos;
 }
 
 void BUtils::mouseClick(BYTE button, COORD pos)
@@ -105,8 +98,7 @@ void BUtils::mouseClick(BYTE button, COORD pos)
 	{
 #pragma warning(push)
 #pragma warning(disable : 4244)
-		POINT prevPos;
-		GetCursorPos(&prevPos);
+		GetCursorPos(&non_public_U::lastMousePos);
 
 		ZeroMemory(&non_public_U::input, sizeof(INPUT));
 		non_public_U::input.type = INPUT_MOUSE;
@@ -143,8 +135,8 @@ void BUtils::mouseClick(BYTE button, COORD pos)
 
 		ZeroMemory(&non_public_U::input, sizeof(INPUT));
 		non_public_U::input.type = INPUT_MOUSE;
-		non_public_U::input.mi.dx = prevPos.x*(65535.0f / (GetSystemMetrics(SM_CXSCREEN) - 1));
-		non_public_U::input.mi.dy = prevPos.y*(65535.0f / (GetSystemMetrics(SM_CYSCREEN) - 1));
+		non_public_U::input.mi.dx = non_public_U::lastMousePos.x*(65535.0f / (GetSystemMetrics(SM_CXSCREEN) - 1));
+		non_public_U::input.mi.dy = non_public_U::lastMousePos.y*(65535.0f / (GetSystemMetrics(SM_CYSCREEN) - 1));
 		non_public_U::input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
 		SendInput(1, &non_public_U::input, sizeof(INPUT));
 #pragma warning(pop)
@@ -154,14 +146,12 @@ void BUtils::mouseClick(BYTE button, COORD pos)
 inline int BUtils::getAsciiKey()
 {
 	int c = (_kbhit()) ? _getch() : 0;
-
 	return (c == 224 || c == 0) ? 0 : c;
 }
 
 inline int BUtils::getSpecialKey()
 {
 	int c = (_kbhit()) ? _getch() : -1;
-
 	return (c == 224 || c == 0) ? _getch() : 0;
 }
 
@@ -252,11 +242,11 @@ void BUtils::Menu::setSideChars(char * left, char * right)
 	}
 	free(this->right);
 	this->right = (char*)malloc(sizeof(char) * strlen(right) + 1);
-	strcpy(this->right, right);
+	strcpy_s(this->right,strlen(right) + 1,right);
 
 	free(this->left);
 	this->left = (char*)malloc(sizeof(char) * strlen(left) + 1);
-	strcpy(this->left, left);
+	strcpy_s(this->left, strlen(left) + 1, left);
 }
 
 void BUtils::Menu::setTextColor(int color)
@@ -346,7 +336,7 @@ int BUtils::Menu::update()
 			if (k == RETURN)
 			{
 				choice = index;
-				return 1;
+				return 2;
 			}
 		}
 	}
